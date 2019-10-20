@@ -11,7 +11,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include "UART_cnfg.h"
-#include "std_types.h"
+#include "BCM.h"
 
 Std_Func_t UART_init();
 

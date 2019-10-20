@@ -13,7 +13,7 @@
 typedef enum {B_9600,} Baudrate_t;
 
 typedef enum {NO_Parity, Even, Odd} Prity_t;
-typedef enum {No_Interrupt,Interrupt} Interrupt_t;
+typedef enum {No_Interrupt,Interrupt} _Interrupt_t;
 
 
 typedef struct {
@@ -25,7 +25,7 @@ typedef struct {
 	uint8 No_of_parity_bits;
 
 	uint8 No_of_data_bits;
-	Interrupt_t Interrupt ;
+	_Interrupt_t Interrupt ;
 
 } UART_cnfg_t;
 

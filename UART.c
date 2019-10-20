@@ -91,7 +91,9 @@ Std_Func_t UART_init() {
 
 	//Interrupt
 
-	if (UART_cnfg_struct.Interrupt == Interrupt) {
+	if (UART_cnfg_struct.Interrupt == Interrupt) 
+	{
+	    SREG |= (1u<< 7 ) ; // ENABLE GLOBAL INTERRUPT
 		UCSRB |= (1 << RXCIE);
 		UCSRB |= (1 << TXCIE);
 		sei();
@@ -101,12 +103,19 @@ Std_Func_t UART_init() {
 
 }
 
-Std_Func_t UART_send(const uint8 Data_to_sent) {
+Std_Func_t UART_send(const uint8 Data_to_sent) 
+{
 
- if (UART_cnfg_struct.Interrupt != Interrupt) {
+ if (UART_cnfg_struct.Interrupt != Interrupt) 
+ {
 
- while (!(UCSRA & (1 << UDRE))) {
- }
+	 while (!(UCSRA & (1 << UDRE))) 
+	 {
+	 }
+	 
+	 	TX_Dispatcher_Counter++;
+	 	Dispatcher_Status = SENDING_BYTE_COMPLETE;
+	 
  }
  UDR = Data_to_sent;
 
@@ -114,42 +123,53 @@ Std_Func_t UART_send(const uint8 Data_to_sent) {
 
  }
 
-Std_Func_t UART_recieve(uint8 *Data_recieved) {
+Std_Func_t UART_recieve(uint8 *Data_recieved) 
+{
 
-	if (UART_cnfg_struct.Interrupt == No_Interrupt) {
-		while (!(UCSRA & (1 << RXC))) {
+	if (UART_cnfg_struct.Interrupt == No_Interrupt) 
+	{
+		while (!(UCSRA & (1 << RXC))) 
+		{
+			
 		}
 	}
+	
 	*Data_recieved = UDR;
 
 	return OK;
 }
 
- Std_Func_t UART_Set_Callback_RX(void (*ptr)()) {
+ Std_Func_t UART_Set_Callback_RX(void (*ptr)()) 
+ {
 
  UART_Callback_RX = ptr;
 
  return OK;
  }
 
- Std_Func_t UART_Set_Callback_TX(void (*ptr)()) {
+ Std_Func_t UART_Set_Callback_TX(void (*ptr)()) 
+ {
 
  UART_Callback_TX = ptr;
 
  return OK;
  }
 
-ISR(USART_RXC_vect) {
+ISR(USART_RXC_vect) 
+{
 
-	 if (UART_Callback_RX != NULL_PTR) {
+	 if (UART_Callback_RX != NULL_PTR) 
+	 {
 	 UART_Callback_RX();
 	 }
 
 }
 
-ISR(USART_TXC_vect) {
-
-	if (UART_Callback_TX != NULL_PTR) {
+ISR(USART_TXC_vect) 
+{
+	
+	if (UART_Callback_TX != NULL_PTR) 
+	{
 		UART_Callback_TX();
 	}
 
