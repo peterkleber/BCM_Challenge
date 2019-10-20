@@ -11,7 +11,7 @@
 	 
 int main (void)
 {
-	 uint8 Data_Buffer[]="HELLO";
+	 uint8 Data_Buffer[]="SEND_DATA";
 	 uint16 Buffer_Size = sizeof(Data_Buffer)/sizeof(Data_Buffer[0]);
 
 	 LCD_4Bits_Initialization();		//LCD is used for testing only

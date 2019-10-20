@@ -38,17 +38,14 @@ static ST_Frame_t Frame;
 
 //------------------------------ Section of creating variables from enum ---------------------------//
 	
- Dispatcher_Status_t Dispatcher_Status;		//this is the static variable which is similar to BCM State Machine
-	
-//static Dispatcher_Status_t Dispatcher_Status;		//this is the static variable which is similar to BCM State Machine
+static Dispatcher_Status_t Dispatcher_Status;		//this is the static variable which is similar to BCM State Machine
 
 //--------------------------------------------------------------------------------------------------//
 
 
 //------------------------------ Section of Static Global Counters ---------------------------------//
 	
- uint16 TX_Dispatcher_Counter = 0;
-//static uint16 TX_Dispatcher_Counter = 0;
+static uint16 TX_Dispatcher_Counter = 0;
 //--------------------------------------------------------------------------------------------------//
 
 
@@ -57,6 +54,7 @@ static ST_Frame_t Frame;
 static uint8 TX_Release_Flag = UNLOCK;			
 static uint8 TX_BCM_Request	 = NO_REQUEST ;	
 //static uint8 Busy_Flag = NOT_BUSY;	
+static uint8 TX_Busy_Flag = NOT_BUSY;
 
 //--------------------------------------------------------------------------------------------------//
 
@@ -101,6 +99,8 @@ void BCM_Send(uint8 *Buffer_ptr ,uint16 Buffer_Size)
 		Frame.Buffer_Ptr= Buffer_ptr;
 		Frame.Check_Sum=0;
 		TX_BCM_Request = REQUEST;
+		
+		LCD_4Bits_Print_Number(2,2,Buffer_Size);
 
 	}
 	 
@@ -113,7 +113,6 @@ void BCM_Send(uint8 *Buffer_ptr ,uint16 Buffer_Size)
 
 void TX_BCM_ISR_Handling (void)
 {
-	TX_Dispatcher_Counter++;
 	Dispatcher_Status = SENDING_BYTE_COMPLETE;	
 }
 
@@ -122,8 +121,9 @@ void TX_BCM_ISR_Handling (void)
 
 void BCM_TX_dispatcher(void)
 {
-	static sint16 Buffer_Index = 0;
+	static uint16 Buffer_Index = 0;
 	static uint8 Current_Byte_test = 0;
+
 
 		switch (Dispatcher_Status)
 		{
@@ -145,66 +145,90 @@ void BCM_TX_dispatcher(void)
 			
 			case SENDING_BYTE:
 			{
+					if(TX_Busy_Flag == NOT_BUSY)
+					{
+						
+						PORTC ^= (1<<PC1);
+						
+						if(TX_Dispatcher_Counter == 0)									     // means it's the turn to send BCM_ID of the Frame
+						{
+							TX_Busy_Flag = BUSY; 
+							UART_send (Frame._BCM_ID);
+							Current_Byte_test = Frame._BCM_ID;
+						}
+						
+						else if(TX_Dispatcher_Counter == 1)	                                 // means it's the turn to send Least_Nibble_Data_size of the Frame
+						{
+							TX_Busy_Flag = BUSY; 
+							uint8 Least_Nibble_Data_Length = (uint8) Frame.Data_length;
+							Least_Nibble_Data_Length = 'L';								     //any value for testing only
+							UART_send (Least_Nibble_Data_Length);
+							
+							Current_Byte_test = Least_Nibble_Data_Length;
+						}
+						
+						else if(TX_Dispatcher_Counter == 2)									 // means it's the turn to send Most_Nibble_Data_size of the Frame
+						{
+							TX_Busy_Flag = BUSY; 
+							uint8 Most_Nibble_Data_Length = (uint8) (Frame.Data_length>>8);
+							Most_Nibble_Data_Length = 'H';									 //any value for testing only
+							UART_send (Most_Nibble_Data_Length);
+							
+							Current_Byte_test = Most_Nibble_Data_Length;
+							
+						}
+										
+						else																// means it's the turn to send the payload Data of the Frame
+						{
+							PORTC ^= (1<<PC2);
+							uint8 Current_Byte = *(Frame.Buffer_Ptr + Buffer_Index);		//buffer_Index is a function of Dispatcher_index where Buffer_Index = Dispatcher_index-3
+							
+							if (Buffer_Index == ((Frame.Data_length)))
+							{
+								Frame.Check_Sum = 'C';
+								UART_send (Frame.Check_Sum);
+								Current_Byte_test = Frame.Check_Sum;
+								Buffer_Index++;
+							}
+							
+							else if (Buffer_Index < ((Frame.Data_length)))
+							{
+								TX_Busy_Flag = BUSY;
+								UART_send(Current_Byte);
+								
+								Buffer_Index++;
+								Current_Byte_test = Current_Byte;
+								
+								Frame.Check_Sum = Frame.Check_Sum + Current_Byte;
+							}
+							
+						}
+	
+					}
 				
-					PORTC ^= (1<<PC1);
-					
-				  if(TX_Dispatcher_Counter == 0)		// means it's the turn to send BCM_ID of the Frame
-				  {
-					  UART_send (Frame._BCM_ID);
-					 
-					  Current_Byte_test = Frame._BCM_ID;
-				  }
-				  
-				  else if(TX_Dispatcher_Counter == 1)	// means it's the turn to send Least_Nibble_Data_size of the Frame
-				  {
-					  uint8 Least_Nibble_Data_Length = (uint8) Frame.Data_length;
-					  UART_send (Least_Nibble_Data_Length);
-					 
-					  Current_Byte_test = 'L';
-				  }
-				  
-				  else if(TX_Dispatcher_Counter == 2)	// means it's the turn to send Most_Nibble_Data_size of the Frame
-				  {
-					  uint8 Most_Nibble_Data_Length = (uint8) (Frame.Data_length>>8);
-					  UART_send (Most_Nibble_Data_Length);
-					  
-					  Current_Byte_test = 'H';
-					  
-				  }
-				  
-				  else								// means it's the turn to send the payload Data of the Frame
-				  {
-					  PORTC ^= (1<<PC2);
-						  
-					  Buffer_Index = TX_Dispatcher_Counter-3;							//Buffer_Index is subtracted by 3 here since there is 3 overhead bytes should send first before we send the data in the buffer
-					  uint8 Current_Byte = *(Frame.Buffer_Ptr + Buffer_Index);		//buffer_Index is a function of Dispatcher_index where Buffer_Index = Dispatcher_index-3
-					  UART_send(Current_Byte);
-					  
-					  Current_Byte_test = Current_Byte;
-					  
-					  Frame.Check_Sum = Frame.Check_Sum + Current_Byte;
-				  }
-
 				break;
 			}
 			
 			
 			case SENDING_BYTE_COMPLETE:
 			{
+				static uint8 row =1;
+				static uint8 col =1;
 				 
-				if (Buffer_Index == (Frame.Data_length - 1) )	// Reached the End of the Buffer
+				if (Buffer_Index > ((Frame.Data_length)) )	// Reached the End of the Buffer
 				{
 					Dispatcher_Status = FRAME_COMPLETE;
+					LCD_4Bits_Print_Character( row, col , Current_Byte_test );
 				}
 				
 				else
-				{				
+				{		
 					Dispatcher_Status = SENDING_BYTE;
-					
+					 TX_Dispatcher_Counter++;
+					 TX_Busy_Flag = NOT_BUSY; 
 					//this section below is used for testing only the payload of the data 
 					 PORTC ^= (1<<PC3);
-					static uint8 row =1;
-					static uint8 col =1;
+
 					LCD_4Bits_Print_Character( row, col , Current_Byte_test );
 					col++;
 				}
@@ -217,7 +241,7 @@ void BCM_TX_dispatcher(void)
 			{
 				
 				 PORTC ^= (1<<PC4);
-				UART_send(Frame.Check_Sum);
+				
 				Dispatcher_Status = IDLE;
 				TX_BCM_Request = FINISHED_REQUEST;
 				TX_Release_Flag = UNLOCK;

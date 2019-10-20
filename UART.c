@@ -113,8 +113,6 @@ Std_Func_t UART_send(const uint8 Data_to_sent)
 	 {
 	 }
 	 
-	 	TX_Dispatcher_Counter++;
-	 	Dispatcher_Status = SENDING_BYTE_COMPLETE;
 	 
  }
  UDR = Data_to_sent;
