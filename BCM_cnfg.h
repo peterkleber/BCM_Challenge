@@ -1,0 +1,26 @@
+/*
+ * TMU_cnfg.h
+ *
+ *  Created on: Oct 12, 2019
+ *       Author: PeterKleber and Ehab
+ */
+
+#ifndef BCM_CNFG_H_
+#define BCM_CNFG_H_
+
+#include"std_types.h"
+
+typedef enum { UART=0,SPI,I2C}Comm_ID_t;
+
+
+typedef enum { IDLE=0, SENDING_BYTE, SENDING_BYTE_COMPLETE , FRAME_COMPLETE} Dispatcher_Status_t;
+	
+typedef struct 
+{
+	Comm_ID_t Comm_ID;	
+} BCM_ConfigType  ;
+
+
+extern BCM_ConfigType BCM_cnfg ;
+
+#endif /* BCM_CNFG_H_ */
