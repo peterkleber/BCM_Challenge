@@ -11,9 +11,8 @@
 volatile uint8 Buffer[1000] = { 1 };
 
 void After_Data_Receive() {
-
 	//ALL is good
-	//PORTA = Buffer[3];
+
 	PORTC = 0xFF;
 	BCM_RX_Buffer_Unlock();
 }
@@ -23,7 +22,6 @@ int main() {
 	DDRA = 0xFF;
 	DDRB = 0xFF;
 	DDRC = 0xFF;
-	DDRD = 0xFF;
 
 	Buffer[3] = 0xFF;
 
