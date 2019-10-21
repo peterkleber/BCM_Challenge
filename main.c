@@ -14,11 +14,12 @@ int main (void)
 	 uint8 Data_Buffer[]="SEND_DATA";
 	 uint16 Buffer_Size = sizeof(Data_Buffer)/sizeof(Data_Buffer[0]);
 
-	 LCD_4Bits_Initialization();		//LCD is used for testing only
-	 LCD_4Bits_Print_String(1,2,"HEY");
+	 LCD_4Bits_Initialization();			//LCD is used for testing only
+
 	
-	 DDRC = 0xFF;					    //test port 
-	 
+	// DDRC = 0xFF;					    //test port 
+	// DDRB = 0xFF;
+	
 	 BCM_Init(&BCM_cnfg);
 	 
 	 BCM_Send( &Data_Buffer[0] , Buffer_Size);

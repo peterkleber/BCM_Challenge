@@ -111,8 +111,7 @@ Std_Func_t UART_send(const uint8 Data_to_sent)
 
 	 while (!(UCSRA & (1 << UDRE))) 
 	 {
-	 }
-	 
+	 } 
 	 
  }
  UDR = Data_to_sent;
