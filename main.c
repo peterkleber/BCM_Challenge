@@ -8,18 +8,24 @@
 #include "std_types.h"
 #include"BCM.h"
 
-volatile uint8 Buffer[1004] = { 0 };
+volatile uint8 Buffer[1000] = { 1 };
 
 void After_Data_Receive() {
 
-	PORTA = 0xFF;
-
+	//ALL is good
+	//PORTA = Buffer[3];
+	PORTC = 0xFF;
 	BCM_RX_Buffer_Unlock();
 }
 
 int main() {
 
 	DDRA = 0xFF;
+	DDRB = 0xFF;
+	DDRC = 0xFF;
+	DDRD = 0xFF;
+
+	Buffer[3] = 0xFF;
 
 	BCM_RX_Set_CallBack_func(After_Data_Receive);
 	BCM_Init();

@@ -7,41 +7,84 @@
 
 #include"BCM.h"
 
-static uint8 *g_Buffer_ptr = NULL_PTR;
-static uint16 g_Buffer_Size = 0;
-static uint16 g_Buffer_index = 0;
+volatile static uint8 *g_Buffer_ptr = NULL_PTR;
+volatile static uint16 g_Buffer_Size = 0;
 
+volatile static uint16 g_Buffer_ISR_index = 0;
 static uint8 Received_Data = 0;
 
-static uint8 BCM_RX_Dispatcer_Start_Flag = 0;
-static uint8 BCM_ID_Check_Flag = 1;
-static uint8 BCM_Incoming_Data_Too_Big_Flag = 0;
-static uint8 BCM_CheckSum_Error_Flag = 0;
+volatile static uint8 BCM_RX_Dispatcer_Start_Flag = 0;
+volatile static uint16 BCM_Incoming_Data_Size = 0;
 
-static uint8 BCM_Lock_Buffer_Flag = 0;
+volatile static uint8 BCM_CheckSum = 0;
+volatile static uint8 BCM_Received_CheckSum = 0;
+volatile static uint8 BCM_Lock_Buffer_Flag = 0;
 
-void (*g_Callback_Func)(void) = NULL_PTR;
+volatile static uint8 BCM_Full_Data_Received_Flag = 0 ;
+
+void (*g_Callback_Func)() = NULL_PTR;
 
 static void BCM_Receive_ISR() {
-	if (BCM_ID_Check_Flag == 1) { //Check if the incoming data is for the BCM
-		if (BCM_Incoming_Data_Too_Big_Flag != 1) {
-			if (BCM_Lock_Buffer_Flag != 1) {
 
-				UART_recieve(&Received_Data); //Receive the data
+	UART_recieve(&Received_Data); //Receive the data
 
-				*(g_Buffer_ptr + g_Buffer_index) = Received_Data; // Put the received data into the buffer
-
-				if (g_Buffer_index == 0) {
-					BCM_RX_Dispatcer_Start_Flag = 1; //Start the Dispatcher with the first interrupt
-				}
-
-				g_Buffer_index++; // increment the index
-			}
+	if (g_Buffer_ISR_index == 0) {
+		if (Received_Data != BCM_ID) {
+			//The ID is not correct
+			PORTC |= (1 << PC0);
+			BCM_Lock_Buffer_Flag = 1; //lock the buffer
+		} else {
+			//IF the ID is correct
+			PORTC &= ~(1 << PC0);
+			BCM_Lock_Buffer_Flag = 0; //unlock the buffer
+			g_Buffer_ISR_index++;
 		}
 	}
-}
+
+	else if (g_Buffer_ISR_index == 1){
+		BCM_Incoming_Data_Size |= Received_Data;
+		g_Buffer_ISR_index++;
+
+	}
+	else if (g_Buffer_ISR_index == 2){
+		BCM_Incoming_Data_Size |= (Received_Data << 8);
+
+		if (BCM_Incoming_Data_Size > (g_Buffer_Size)) {
+			//if the incoming data is bigger than the buffer
+			PORTC |= (1 << PC1);
+			g_Buffer_ISR_index = 0 ; // reset the g_Buffer_ISR_index
+			BCM_Lock_Buffer_Flag = 1;//lock the buffer
+		}
+		else {
+			//If the size is OK
+			BCM_Lock_Buffer_Flag = 0; //unlock the buffer
+			PORTC &= ~(1 << PC1);
+			g_Buffer_ISR_index++;
+		}
+
+	}
+
+	else if (g_Buffer_ISR_index > 2) {
+		//Checksum capture
+
+		if (g_Buffer_ISR_index == (BCM_Incoming_Data_Size + 3)) {
+			BCM_Received_CheckSum = Received_Data ;
+			BCM_Full_Data_Received_Flag = 1;
+			BCM_RX_Dispatcer_Start_Flag = 1; //Start the Dispatcher
+		}
+
+		else if (BCM_Lock_Buffer_Flag != 1) { //Check if the buffer is not locked
+			BCM_RX_Dispatcer_Start_Flag = 1; //Start the Dispatcher
+			*(g_Buffer_ptr + (g_Buffer_ISR_index - 3)) = Received_Data; // Put the received data into the buffer
+			g_Buffer_ISR_index++;
+				}
+			}
+		}
 
 void BCM_Init() {
+
+	DDRA = 0xFF;
+
 	UART_Set_Callback_RX(BCM_Receive_ISR);
 	UART_init();
 }
@@ -52,60 +95,47 @@ void BCM_receive(uint8 *Buffer_ptr, uint16 Buffer_Size) {
 }
 
 void BCM_RX_dispatcher(void) {
-	if (BCM_RX_Dispatcer_Start_Flag) {
 
-		static uint16 BCM_RX_dispatcher_Counter = 0;
-		static uint16 BCM_Incoming_Data_Size = 0;
-		static uint8 BCM_CheckSum = 0;
+	static uint8 RX_Dispatcer_Counter = 0;
 
-		if (BCM_RX_dispatcher_Counter == 0) { //Check the first byte in the buffer for the BCM ID
-			//Check the BCM ID
-			if (*(g_Buffer_ptr + 0) != BCM_ID) {
-				BCM_ID_Check_Flag = 0; //Set BCM Check flag to false
+	if (BCM_RX_Dispatcer_Start_Flag == 1) {
+
+		if (BCM_Full_Data_Received_Flag == 1) {
+
+			BCM_Full_Data_Received_Flag = 0 ;
+			PORTC &= ~(1 << PC2);
+			if (BCM_CheckSum == BCM_Received_CheckSum ){
+				//Call the Call back function
+				if (g_Callback_Func != NULL_PTR) {
+					BCM_Lock_Buffer_Flag = 1;
+					g_Callback_Func();
+				}
 			}
-			BCM_RX_dispatcher_Counter++;
-		}
-
-		//Check the second and third byte for the incoming data size
-		else if (BCM_RX_dispatcher_Counter == 1) {
-
-			BCM_Incoming_Data_Size |=
-					*(g_Buffer_ptr + BCM_RX_dispatcher_Counter);
-			//set the first byte of the BCM_RX_dispatcher_Counter
-			BCM_RX_dispatcher_Counter++;
-		} else if (BCM_RX_dispatcher_Counter == 2) {
-
-			BCM_Incoming_Data_Size |= (*(g_Buffer_ptr
-					+ BCM_RX_dispatcher_Counter) << 8);
-			//set the second byte of the BCM_RX_dispatcher_Counter
-			if (BCM_Incoming_Data_Size > (g_Buffer_Size - 4)) {
-				//if the incoming data is bigger than the buffer (4 is for the frame )
-				BCM_Incoming_Data_Too_Big_Flag = 1;
+			else{
+				PORTC |= (1 << PC2);
 			}
-			BCM_RX_dispatcher_Counter++;
+			//Get ready for the next data coming
+			g_Buffer_ISR_index = 0;
+
+			RX_Dispatcer_Counter = 0;
+			BCM_Incoming_Data_Size = 0;
+
+			BCM_CheckSum = 0;
+			BCM_Received_CheckSum = 0;
+
 		}
-
-		else if (g_Buffer_index == (BCM_Incoming_Data_Size + 4)) {
-			//if we received the full data
-			//Check ChechkSum
-			if (BCM_CheckSum == *(g_Buffer_ptr + (g_Buffer_index - 1))) {
-				//Check ChechkSum Byte
-				BCM_Lock_Buffer_Flag = 1;
-				g_Callback_Func();
-
-			} else {
-				BCM_CheckSum_Error_Flag = 1;
-			}
-		}
-
 		else {
 			//Receiving Data
-			BCM_CheckSum += BCM_CheckSum;
-			BCM_RX_dispatcher_Counter++;
+			BCM_CheckSum += *(g_Buffer_ptr + RX_Dispatcer_Counter);
+			RX_Dispatcer_Counter++;
 		}
+		PORTC ^= (1 << PC7); //Check if the dispatcher is running
+		BCM_RX_Dispatcer_Start_Flag = 0;
 	}
 }
-void BCM_RX_Set_CallBack_func(void (*callback_func)(void)) {
+
+
+void BCM_RX_Set_CallBack_func(void (*callback_func)()) {
 	g_Callback_Func = callback_func;
 }
 

@@ -11,6 +11,10 @@
 #include "std_types.h"
 #include"UART.h"
 
+#define BCM_RX_ID_ERROR (uint8)(100)
+#define BCM_RX_DATA_SIZE_ERROR (uint8)(200)
+#define BCM_RX_CHECKSUM_ERROR (uint8)(300)
+
 #define BCM_ID (uint8)(0xA5)
 
 void BCM_Init();
@@ -25,7 +29,7 @@ void BCM_TX_dispatcher(void);
 
 void BCM_RX_Buffer_Unlock(void);
 
-void BCM_RX_Set_CallBack_func(void (*callback_func)(void));
+void BCM_RX_Set_CallBack_func(void (*callback_func)());
 
 
 #endif /* BCM_H_ */
