@@ -13,8 +13,7 @@
 typedef enum { UART=0,SPI,I2C}Comm_ID_t;
 
 
-typedef enum { IDLE=0, SENDING_BYTE, SENDING_BYTE_COMPLETE , FRAME_COMPLETE} Dispatcher_Status_t;
-	
+
 typedef struct 
 {
 	Comm_ID_t Comm_ID;	

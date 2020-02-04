@@ -16,19 +16,14 @@ void LCD_4Bits_Initialization (void)
 	{
 		LCD_4Bits_DDR = 0xFF; 						//LCD port is output
 		LCD_4Bits_PORT &= ~ (1<<LCD_EN) ;			//LCD_EN = 0
-		_delay_us (1000) ;							//wait for initialization and Stable Power.
+		
 		LCD_4Bits_Write_Command (0x33) ;			//$33 for 4-bit mode
-		_delay_ms(100) ; 							//wait 100 microsecond between each command sent
 		LCD_4Bits_Write_Command (0x32);				//$32 for 4-bit mode
-		_delay_ms (100) ; 							//wait 100 microsecond between each command sent
 		LCD_4Bits_Write_Command (0x28) ; 			//$28 for 4-bits, LCD 2 line , 5x7 matrix
-		_delay_ms (100); 							//wait 100 microsecond between each command sent
 		LCD_4Bits_Write_Command (0x0E);				//display on, cursor on
-		_delay_ms (100);							//wait 100 microsecond between each command sent
 		LCD_4Bits_Write_Command (0x01);				//Clear LCD
 		_delay_us (2000);							//long wait as clear command takes a long time
 		LCD_4Bits_Write_Command (0x06) ; 			//shift cursor right
-		_delay_ms (100) ;
 	}
 //--------------------------------------------------------------------------------------------------------------------------//
 	
@@ -40,14 +35,15 @@ LCD_4Bits_PORT &= ~(1<<LCD_RS);													//RS = 0 for command
 LCD_4Bits_PORT &= ~  (1<<LCD_RW);												//RW = 0 for write
 
 LCD_4Bits_PORT  |= (1<<LCD_EN);													//EN = 1 for High-to-Low
-_delay_ms(5);																	//wait to make EN wider
+_delay_us(1);																	//wait to make EN wider
 LCD_4Bits_PORT &= ~ (1<<LCD_EN) ;												//EN = 0 for High-to-Low
-_delay_ms(20);																	//wait for the least nibble of the Command
+_delay_us(100);																	//wait for the least nibble of the Command
 
 LCD_4Bits_PORT = (LCD_4Bits_PORT & 0x0F) | (Command <<4) ;					    // Shift the least nibble by 4 to send the Highest Nibble in   Command  to the outPort
 LCD_4Bits_PORT  |= ( 1 << LCD_EN ) ;											//EN = 1 for High-to-Low
-_delay_ms (1) ;																	//wait to make EN wider
+_delay_us (1) ;																	//wait to make EN wider
 LCD_4Bits_PORT &= ~ ( 1 << LCD_EN) ;											//EN = 0 for High-to-Low
+_delay_us(100);	
 
 }						
 
@@ -64,15 +60,13 @@ LCD_4Bits_PORT |= (1 << LCD_RS);									//RS = 1 for data
 LCD_4Bits_PORT &= ~ (1 << LCD_RW);									//RW = 0 for write
 
 LCD_4Bits_PORT |= (1 << LCD_EN);									//EN = 1    for High-to-Low
- _delay_ms(5) ;
+ _delay_us(1) ;
 LCD_4Bits_PORT &= ~(1<< LCD_EN) ; 									//EN = 0   for High-to-Low
-
-_delay_ms(20);														//wait for the least nibble of the Command
-
 LCD_4Bits_PORT = (LCD_4Bits_PORT & 0x0F) | (Data <<4) ;			    // shift the least nibble by 4 to send the Highest Nibble in data  to the outPort.
 LCD_4Bits_PORT |=(1 << LCD_EN);										//EN = 1    for High-to-Low
- _delay_us(5) ;
+ _delay_us(1) ;
 LCD_4Bits_PORT &= ~ (1<< LCD_EN) ; 									//EN = 0   for High-to-Low
+_delay_us(100);	
 
 /*
 	X_axis++ ;
@@ -104,7 +98,7 @@ void LCD_4Bits_Cursor_Position( unsigned char y , unsigned char x)   		// define
 unsigned char firstCharAdr [ ] ={0x80,0xC0,0x94,0xD4} ;			// See the Table of Cursor Position adjustment
 
 LCD_4Bits_Write_Command (  firstCharAdr [y-1] + x - 1);
-_delay_ms(100);
+_delay_us(100);
  }
 //--------------------------------------------------------------------------------------------------------------------------//
 

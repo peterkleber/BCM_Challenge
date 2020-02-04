@@ -7,40 +7,52 @@
 
 #include"BCM.h"
 
+#define RX_BUFFER_SIZE 1000
 
+static void Received_Frame_Notification(void) ;
+static void Transmit_Frame_Notification (void);
 	
-void After_Data_Receive() 
+void Received_Frame_Notification(void) 
 {
 	//ALL is good
-	PORTC = 0xFF;
+	PORTC |= (1<<PC0);
+	LCD_4Bits_Clear();
+	LCD_4Bits_Print_String(1,1,"Wsal ya basha");
 	BCM_RX_Buffer_Unlock();
 }
 
+void Transmit_Frame_Notification (void)
+{
+	
+	PORTC |= (1<<PC1);
+	
+}
+	 
+	 
 	 
 int main (void)
 {
-	 volatile uint8 Buffer[1000] = { 1 };
-	 uint8 Data_Buffer[]={1,1,1,1,1,1,1,1,1,1};
-	 uint16 Buffer_Size = sizeof(Data_Buffer)/sizeof(Data_Buffer[0]);
+	 uint8 RX_Data_Buffer[RX_BUFFER_SIZE];
+	 uint8 TX_Data_Buffer[]="Send_Data";
+	 uint16 TX_Buffer_Size = sizeof(TX_Data_Buffer)/sizeof(TX_Data_Buffer[0]);
 
 	 LCD_4Bits_Initialization();			//LCD is used for testing only
 
 	 BCM_Init(&BCM_cnfg);
 	 
-	 BCM_RX_Set_CallBack_func(After_Data_Receive);
 	 
-	 
-	 BCM_Send( &Data_Buffer[0] , Buffer_Size);
+	 BCM_Send( TX_Data_Buffer , TX_Buffer_Size , Transmit_Frame_Notification);
 	
-	 BCM_receive(Buffer, 1004);
+	 BCM_Setup_Rx_Buffer(RX_Data_Buffer, RX_BUFFER_SIZE , Received_Frame_Notification);
  
 	 
 	while(1)
 	{
-		 BCM_TX_dispatcher();
-		 BCM_RX_dispatcher();
+		 BCM_TX_Dispatcher();
+		 BCM_RX_Dispatcher();
 	}
 	
 	return 0;
 
 }
+
